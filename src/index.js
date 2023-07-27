@@ -1,3 +1,4 @@
+import { geoJSON } from "leaflet";
 import "./styles.css";
 
 const fetchData = async () => {
@@ -7,7 +8,16 @@ const fetchData = async () => {
     const dataResponse = await fetch(url);
     const dataJson = await dataResponse.json();
 
-    initMap(dataJson);
+    const urlPos = "https://statfin.stat.fi/PxWeb/sq/4bb2c735-1dc3-4c5e-bde7-2165df85e65f";
+    const urlNeg = "https://statfin.stat.fi/PxWeb/sq/944493ca-ea4d-4fd9-a75c-4975192f7b6e";
+    const posRes = await fetch(urlPos);
+    const posJson = await posRes.json();
+    const negRes = await fetch(urlNeg);
+    const negJson = await negRes.json();
+
+    initMap(dataJson, posJson, negJson);
+
+
   } catch (error) {
     console.error("Error fetching or parsing data:", error);
   }
@@ -22,6 +32,7 @@ const initMap = (data) => {
 
   let geoJSON = L.geoJSON(data, {
     weight: 2,
+    onEachFeature: getFeature
   }).addTo(map);
 
   let osm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -32,5 +43,12 @@ const initMap = (data) => {
 
   map.fitBounds(geoJSON.getBounds());
 };
+
+const getFeature = async (feature, layer) => {
+    if(!feature.id) return;
+    
+    layer.bindTooltip(feature.properties.name)
+
+}
 
 fetchData();
