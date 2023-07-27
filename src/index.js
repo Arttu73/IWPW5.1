@@ -1,4 +1,4 @@
-import { geoJSON } from "leaflet";
+
 import "./styles.css";
 
 const fetchData = async () => {
@@ -14,8 +14,27 @@ const fetchData = async () => {
     const posJson = await posRes.json();
     const negRes = await fetch(urlNeg);
     const negJson = await negRes.json();
+    const posIndex = posJson.dataset.dimension.Tuloalue.category.index;
+    const negIndex = negJson.dataset.dimension.Lähtöalue.category.index;
 
-    initMap(dataJson, posJson, negJson);
+    for (let i in dataJson.features) {
+      let kunta = dataJson.features[i].properties.kunta;
+    
+      let posValue = posJson.dataset.value[posIndex["KU" + kunta]];
+      let negValue = negJson.dataset.value[negIndex["KU" + kunta]];
+
+      dataJson.features[i].properties.positive = posValue;
+      dataJson.features[i].properties.negative = negValue;
+
+      let hue = (posValue / negValue)**3 * 60
+      if (hue > 120) {
+        hue = 120;
+      }
+
+      dataJson.features[i].properties.hue = hue;
+    }
+
+    initMap(dataJson);
 
 
   } catch (error) {
@@ -32,7 +51,8 @@ const initMap = (data) => {
 
   let geoJSON = L.geoJSON(data, {
     weight: 2,
-    onEachFeature: getFeature
+    onEachFeature: getFeature,
+    style: addHue
   }).addTo(map);
 
   let osm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -44,11 +64,25 @@ const initMap = (data) => {
   map.fitBounds(geoJSON.getBounds());
 };
 
-const getFeature = async (feature, layer) => {
+const getFeature = (feature, layer) => {
     if(!feature.id) return;
     
+    layer.bindPopup(
+      `<ul>
+            <li>Name: ${feature.properties.name}</li>
+            <li>Positive: ${feature.properties.positive}</li>
+            <li>Negative: ${feature.properties.negative}</li>
+        </ul>`
+    )
+
     layer.bindTooltip(feature.properties.name)
 
+}
+
+const addHue = (feature) => {
+  return {
+    color: `hsl(${feature.properties.hue}, 75%, 50%)`
+  };
 }
 
 fetchData();
